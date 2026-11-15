@@ -1,0 +1,76 @@
+# Render Blueprint (advanced path: the DATABASE IS MIGRATED BY ALEMBIC, so do NOT also paste the SQL files into Supabase).
+# Beginners: follow docs/DEPLOY_STEP_BY_STEP.md instead (it uses the Supabase SQL editor and the Render dashboard).
+# Every `sync: false` value is typed into the Render dashboard when the Blueprint is created; never commit secrets.
+# Keep ONE API instance until REDIS_URL is set and multi-instance realtime/rate limiting has been tested.
+# `starter` is the cheapest always-on size; move the API to `standard` when you pass roughly 100 concurrent users.
+services:
+  - type: web
+    name: routepilot-api
+    runtime: python
+    plan: starter
+    region: singapore
+    rootDir: services/api
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: alembic upgrade head          # runs once per deploy, not once per instance
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers
+    healthCheckPath: /health/ready
+    autoDeployTrigger: checksPass
+    envVars:
+      - { key: PYTHON_VERSION, value: 3.13.5 }
+      - { key: APP_ENV, value: production }
+      - { key: APP_NAME, value: RoutePilot API }
+      - { key: FORWARDED_ALLOW_IPS, value: "*" }      # trust Render's proxy so rate limits see the real client address
+      - { key: RATE_LIMIT_PER_MINUTE, value: "1200" }  # per client address; offices share one address
+      - { key: DATABASE_URL, sync: false }            # Supabase Session pooler URI
+      - { key: MIGRATION_DATABASE_URL, sync: false }  # optional: Supabase direct connection for alembic
+      - { key: SUPABASE_URL, sync: false }
+      - { key: SUPABASE_JWT_SECRET, sync: false }     # use this OR the JWKS URL; delete the line you do not use
+      - { key: SUPABASE_JWKS_URL, sync: false }
+      - { key: SUPABASE_SERVICE_ROLE_KEY, sync: false }
+      - { key: REALTIME_TICKET_SECRET, generateValue: true }
+      - { key: METRICS_TOKEN, generateValue: true }
+      - { key: CORS_ORIGINS, sync: false }            # exact website address, e.g. https://routepilot.vercel.app
+      - { key: REDIS_URL, sync: false }
+      - { key: GPS_SOS_FEATURE_ENABLED, value: "false" }
+      - { key: LIVE_TRACKING_FEATURE_ENABLED, value: "false" }
+      - { key: NOTIFICATIONS_SEND_REAL, value: "false" }
+      - { key: ROUTING_PROVIDER, value: osrm }
+      - { key: OSRM_BASE_URL, sync: false }
+      - { key: ROUTING_TIMEOUT_SECONDS, value: "4.0" }
+      - { key: BILLING_SELLER_NAME, sync: false }
+      - { key: BILLING_SELLER_GSTIN, sync: false }
+      - { key: BILLING_PAYMENT_INSTRUCTIONS, sync: false }
+
+  # The worker expires unanswered trip offers, sends notifications, runs AUTO-DISPATCH, issues monthly invoices and purges old data.
+  - type: worker
+    name: routepilot-worker
+    runtime: python
+    plan: starter
+    region: singapore
+    rootDir: services/api
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.worker
+    autoDeployTrigger: checksPass
+    envVars:
+      - { key: PYTHON_VERSION, value: 3.13.5 }
+      - { key: APP_ENV, value: production }
+      - { key: APP_NAME, value: RoutePilot Worker }
+      - { key: DATABASE_URL, sync: false }
+      - { key: SUPABASE_URL, sync: false }
+      - { key: SUPABASE_JWT_SECRET, sync: false }
+      - { key: SUPABASE_JWKS_URL, sync: false }
+      - { key: REALTIME_TICKET_SECRET, sync: false }  # same value as the API
+      - { key: REDIS_URL, sync: false }
+      - { key: GPS_SOS_FEATURE_ENABLED, value: "false" }
+      - { key: LIVE_TRACKING_FEATURE_ENABLED, value: "false" }
+      - { key: NOTIFICATIONS_SEND_REAL, value: "false" }
+      - { key: ROUTING_PROVIDER, value: osrm }
+      - { key: OSRM_BASE_URL, sync: false }
+      - { key: ROUTING_TIMEOUT_SECONDS, value: "4.0" }
+      - { key: TWILIO_ACCOUNT_SID, sync: false }
+      - { key: TWILIO_AUTH_TOKEN, sync: false }
+      - { key: TWILIO_SMS_FROM, sync: false }
+      - { key: TWILIO_WHATSAPP_FROM, sync: false }
+      - { key: SMTP_HOST, sync: false }
+      - { key: SMTP_USER, sync: false }
+      - { key: SMTP_PASSWORD, sync: false }

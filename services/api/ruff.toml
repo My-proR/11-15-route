@@ -1,0 +1,7 @@
+target-version = "py312"
+line-length = 200
+extend-exclude = ["alembic/versions"]
+
+[lint]
+select = ["E9", "F", "B", "S102", "S301", "S307", "S324", "S506", "S608"]
+ignore = ["B008", "S608"]   # FastAPI Depends() defaults; SQL is built only from whitelisted identifiers (see common.sort_clause)

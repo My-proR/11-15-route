@@ -1,0 +1,17 @@
+{
+  "cli": { "version": ">= 16.0.0", "appVersionSource": "local" },
+  "build": {
+    "base": {
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://YOUR-API.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://YOUR-PROJECT.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "YOUR-ANON-KEY",
+        "ANDROID_PACKAGE": "in.routepilot.app",
+        "APP_LINK_HOST": "YOUR-WEB-HOST.vercel.app"
+      }
+    },
+    "preview": { "extends": "base", "distribution": "internal", "android": { "buildType": "apk" } },
+    "production": { "extends": "base", "autoIncrement": false, "android": { "buildType": "app-bundle" } }
+  },
+  "submit": { "production": { "android": { "track": "internal" } } }
+}

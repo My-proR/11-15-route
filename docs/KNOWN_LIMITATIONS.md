@@ -1,0 +1,22 @@
+# Known limitations
+- Docker Compose, Dockerfiles, and CI workflow were written but never executed here.
+- Real Supabase, Twilio, SMTP, Expo push, Web Push and OSRM integrations are unverified; tests use fakes.
+- Without OSRM, plans are provisional and the geographic fallback grouping is weak: in the 3-vehicle / 6-employee seed demo several employees ended `no_vehicle_available`. Configure OSRM for real use.
+- Route override vs allocation-commit race is documented but not locked.
+- Mobile app typechecks only; not run on device; push token flow untested.
+- No retention purge job for location rows yet.
+- Web main bundle is ~723 kB (not code-split beyond the map).
+- Load test was single-worker, same-host; no soak test, no multi-instance test, Redis rate limiter not load-tested.
+- No DPDP legal review; no penetration test.
+- Windows instructions untested on Windows.
+- `npm audit` on the mobile app reports a high-severity advisory in `braces` (build-time, via Expo/metro). The only npm fix is a breaking Expo upgrade; it affects developer tooling, not code shipped in the app. The CI audit step for mobile is informational for this reason. Revisit on the next Expo SDK bump.
+- Trip QR: scanning (expo-camera / web BarcodeDetector) and QR rendering were never run on a device or browser camera; web scanning only works in browsers that support BarcodeDetector. Continuity uses 14 days of history and does not use the route master data when grouping passengers. Boarding screens are not covered by Playwright (API tests only).
+- Web map library was upgraded to maplibre-gl 6.x to clear a critical npm advisory in 4.x. It builds, type-checks, and a standalone headless-Chromium smoke test (map + marker + zoom control) rendered; the live-tracking page itself was not exercised end to end with tracking switched on.
+- Google sign-in, the invite accept flow against real Supabase, PWA install, and WhatsApp deep links were tested only with simulated tokens/headless Chromium, never with real Google/Supabase or a phone.
+- Tamil text covers sign-in, invite page, rider and driver home, boarding code, duty toggle and the install banner. Other screens (staff admin, SOS page, leave, QR dialogs) are English. The Tamil wording was written by an AI and needs review by a native speaker before wide release. The native Android app (`apps/mobile`) also has Google sign-in, invite links, a Tamil/English switch and a paused-organization screen, but it has **never been built into an APK or run on a device**; its Tamil covers trips, duty, boarding, alerts and account only (SOS tab and QR sheets are English).
+- Auto-dispatch needs the worker process running and is only as good as the plan: without OSRM, plans are provisional and are left as proposals for staff. It never re-plans slots that already have allocations, and it runs once per date (if it fails, staff are told and must plan manually). Turning it on after the cutoff has passed runs it at the next worker tick.
+- Invite links are bearer links: whoever opens one first (and signs in with Google) gets that account, unless the link is locked to an email (API only). Send them privately.
+- `npm audit` lists a moderate advisory in vitest/@vitest/mocker (test runner only, not shipped); fixing needs a major vitest upgrade.
+- Billing: no online payment gateway; invoice layout/numbering and GST fields need a chartered accountant's review; pausing an organization stops its drivers and SOS too (see `BILLING.md`). Driver-paid billing is not built.
+- The rate limiter is per client IP: many users behind one office address share one budget (raise `RATE_LIMIT_PER_MINUTE`), and behind a proxy `FORWARDED_ALLOW_IPS=*` must be set or everyone shares the proxy's address.
+- The Render Blueprint (`infra/deployment/render.yaml`) was corrected after an external audit but never run; the `starter` plan is the cheapest always-on size and its memory headroom for this API is untested. It migrates the database with Alembic, so do not also paste the SQL files into Supabase.

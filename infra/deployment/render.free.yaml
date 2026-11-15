@@ -1,0 +1,33 @@
+# Render Blueprint for the NO-CARD FREE route: ONE free web service; the background worker runs inside it (RUN_WORKER_IN_API=true).
+# Free services have no preDeployCommand, so the start command applies database migrations first (safe to repeat: alembic skips what is applied).
+# Every `sync: false` value is typed into the Render dashboard; never commit secrets. See docs/DEPLOY_FREE_NO_CARD.md.
+services:
+  - type: web
+    name: routepilot-api
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: services/api
+    buildCommand: pip install -r requirements.txt
+    startCommand: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'"
+    healthCheckPath: /health/live
+    autoDeployTrigger: commit
+    envVars:
+      - { key: PYTHON_VERSION, value: 3.13.5 }
+      - { key: APP_ENV, value: production }
+      - { key: RUN_WORKER_IN_API, value: "true" }
+      - { key: FORWARDED_ALLOW_IPS, value: "*" }
+      - { key: RATE_LIMIT_PER_MINUTE, value: "1200" }
+      - { key: DATABASE_URL, sync: false }            # Supabase Session pooler URI
+      - { key: SUPABASE_URL, sync: false }
+      - { key: SUPABASE_JWKS_URL, sync: false }
+      - { key: SUPABASE_SERVICE_ROLE_KEY, sync: false }
+      - { key: REALTIME_TICKET_SECRET, generateValue: true }
+      - { key: METRICS_TOKEN, generateValue: true }
+      - { key: CORS_ORIGINS, sync: false }            # exact website address, e.g. https://routepilot.pages.dev
+      - { key: GPS_SOS_FEATURE_ENABLED, value: "false" }
+      - { key: LIVE_TRACKING_FEATURE_ENABLED, value: "false" }
+      - { key: NOTIFICATIONS_SEND_REAL, value: "false" }
+      - { key: BILLING_SELLER_NAME, sync: false }
+      - { key: BILLING_SELLER_GSTIN, sync: false }
+      - { key: BILLING_PAYMENT_INSTRUCTIONS, sync: false }

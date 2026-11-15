@@ -1,0 +1,32 @@
+# Free-tier production stack for ONE small VM (e.g. Oracle Cloud Always Free).
+# Database + auth live in Supabase; the website is on Cloudflare Pages. This file runs only: migrate -> api + worker, behind Caddy (auto HTTPS).
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+services:
+  migrate:
+    build: ./services/api
+    command: alembic upgrade head
+    env_file: .env.prod
+    restart: "no"
+  api:
+    build: ./services/api
+    env_file: .env.prod
+    restart: unless-stopped
+    depends_on: { migrate: { condition: service_completed_successfully } }
+    expose: ["8000"]
+    mem_limit: 700m
+  worker:
+    build: { context: ., dockerfile: services/worker/Dockerfile }
+    env_file: .env.prod
+    restart: unless-stopped
+    depends_on: { migrate: { condition: service_completed_successfully } }
+    mem_limit: 400m
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment: { API_DOMAIN: "${API_DOMAIN}" }
+    volumes: ["./infra/deployment/Caddyfile.api:/etc/caddy/Caddyfile:ro", "caddy_data:/data", "caddy_config:/config"]
+    depends_on: [api]
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,7 @@
+-r requirements.txt
+pytest>=8.3,<9.0
+pytest-asyncio>=0.24,<2.0
+fakeredis>=2.26,<3.0
+locust>=2.32,<3.0
+pip-audit>=2.7,<3.0
+ruff>=0.8

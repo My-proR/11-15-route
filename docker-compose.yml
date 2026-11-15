@@ -1,0 +1,42 @@
+# Local development stack. Not verified in the authoring sandbox (no Docker daemon) — see docs/testing-report.md.
+services:
+  db:
+    image: postgres:16
+    environment: { POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}", POSTGRES_DB: routepilot }
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U postgres -d routepilot"], interval: 5s, timeout: 3s, retries: 20 }
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  migrate:
+    build: ./services/api
+    command: alembic upgrade head
+    environment: &apienv
+      APP_ENV: development
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/routepilot
+      REDIS_URL: redis://redis:6379/0
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-dev-secret-dev-secret-dev-secret-123}
+      CORS_ORIGINS: http://localhost:5173
+      GPS_SOS_FEATURE_ENABLED: ${GPS_SOS_FEATURE_ENABLED:-false}
+      LIVE_TRACKING_FEATURE_ENABLED: ${LIVE_TRACKING_FEATURE_ENABLED:-false}
+      OSRM_BASE_URL: ${OSRM_BASE_URL:-}
+      NOTIFICATIONS_SEND_REAL: "false"
+    depends_on: { db: { condition: service_healthy } }
+  api:
+    build: ./services/api
+    environment: *apienv
+    ports: ["8000:8000"]
+    depends_on: { migrate: { condition: service_completed_successfully }, redis: { condition: service_started } }
+  worker:
+    build: { context: ., dockerfile: services/worker/Dockerfile }
+    environment: *apienv
+    depends_on: { migrate: { condition: service_completed_successfully } }
+  web:
+    build:
+      context: ./apps/web
+      args: { VITE_API_BASE_URL: http://localhost:8000 }
+    ports: ["5173:80"]
+    depends_on: [api]
+volumes:
+  pgdata:

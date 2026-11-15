@@ -1,0 +1,12 @@
+{
+  "name": "@routepilot/shared-types",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TypeScript types generated from the API's OpenAPI schema (services/api). Regenerate with `npm run generate` after API changes.",
+  "types": "index.d.ts",
+  "scripts": {
+    "export-schema": "cd ../../services/api && python -c \"import json;from app.main import create_app;json.dump(create_app().openapi(),open('../../packages/shared-types/openapi.json','w'),indent=1)\"",
+    "generate": "npm run export-schema && openapi-typescript openapi.json -o index.d.ts"
+  },
+  "devDependencies": { "openapi-typescript": "^7.4.0" }
+}
